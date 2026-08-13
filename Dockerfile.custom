@@ -1,0 +1,81 @@
+# Custom Forgejo build with package event webhook header fix
+# Uses standard Go Alpine images instead of data.forgejo.org
+
+FROM --platform=$BUILDPLATFORM golang:1.22-alpine AS build
+
+ARG TARGETPLATFORM
+ARG RELEASE_VERSION=15.0.3-custom
+ARG TAGS="sqlite sqlite_unlock_notify"
+
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+
+# Install build dependencies
+RUN apk --no-cache add \
+    build-base \
+    git \
+    nodejs \
+    npm \
+    musl-dev \
+    gcc \
+    clang \
+    lld
+
+# For ARM64 cross-compilation on AMD64
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+    apk --no-cache add aarch64-none-elf; \
+    fi
+
+WORKDIR /src
+
+# Copy source code
+COPY . .
+
+# Build frontend
+RUN make frontend
+
+# Build backend
+RUN make clean-no-bindata && \
+    LDFLAGS="-buildid=" make \
+    FORGEJO_GENERATE_SKIP_HASH=true \
+    RELEASE_VERSION=${RELEASE_VERSION} \
+    GOFLAGS="-trimpath" \
+    go-check generate-backend static-executable
+
+# Runtime image
+FROM alpine:3.19
+
+ARG RELEASE_VERSION
+LABEL org.opencontainers.image.source="https://github.com/malarinv/forgejo"
+LABEL org.opencontainers.image.description="Forgejo with package event webhook header fix"
+LABEL org.opencontainers.image.version="${RELEASE_VERSION}"
+
+RUN apk --no-cache add \
+    ca-certificates \
+    linux-pam \
+    su-exec \
+    s6 \
+    openssh
+
+# Create git user
+RUN addgroup -g 1000 git && \
+    adduser -D -u 1000 -G git -h /data/git -s /bin/bash git
+
+# Copy built binary
+COPY --from=build /src/gitea /app/gitea/gitea
+RUN ln -s /app/gitea/gitea /app/gitea/forgejo-cli
+
+# Copy entrypoint and s6 config from source
+COPY --from=build /src/docker/root /tmp/local
+RUN chmod 755 /tmp/local/usr/bin/entrypoint && \
+    cp -a /tmp/local/* / && \
+    rm -rf /tmp/local
+
+EXPOSE 22 3000
+
+ENV USER=git
+ENV GITEA_CUSTOM=/data/gitea
+VOLUME ["/data"]
+
+ENTRYPOINT ["/usr/bin/entrypoint"]
+CMD ["/usr/bin/s6-svscan", "/etc/s6"]
