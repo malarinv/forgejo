@@ -13,7 +13,7 @@ RUN npm install && \
     npx webpack --mode production
 
 # Stage 2: Build backend for target platform
-FROM --platform=$TARGETPLATFORM golang:1.22-alpine AS build
+FROM --platform=$TARGETPLATFORM golang:1.25-alpine AS build
 
 ARG RELEASE_VERSION=15.0.3-custom
 ARG TAGS="sqlite sqlite_unlock_notify"
