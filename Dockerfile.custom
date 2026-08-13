@@ -1,34 +1,38 @@
 # Custom Forgejo build with package event webhook header fix
-# Uses standard Go Alpine images instead of data.forgejo.org
-# Builds natively via Docker buildx QEMU emulation
+# Strategy: build frontend natively (AMD64), cross-compile backend for ARM64
 
-FROM golang:1.22-alpine AS build
+# Stage 1: Build frontend on native platform
+FROM --platform=linux/amd64 node:20-alpine AS frontend
+
+RUN apk --no-cache add git
+
+WORKDIR /src
+COPY . .
+
+RUN npm install --legacy-peer-deps && \
+    npx webpack --mode production
+
+# Stage 2: Build backend for target platform
+FROM --platform=$TARGETPLATFORM golang:1.22-alpine AS build
 
 ARG RELEASE_VERSION=15.0.3-custom
 ARG TAGS="sqlite sqlite_unlock_notify"
 
 ENV CGO_ENABLED=1
-ENV GOOS=linux
-ENV GOARCH=arm64
 
-# Install build dependencies
 RUN apk --no-cache add \
     build-base \
     git \
-    nodejs \
-    npm \
     musl-dev \
     gcc
 
 WORKDIR /src
-
-# Copy source code
 COPY . .
 
-# Build frontend
-RUN make frontend
+# Copy pre-built frontend assets
+COPY --from=frontend /src/public/assets ./public/assets
 
-# Build backend (use plain go, not xx-go)
+# Build backend
 RUN make clean-no-bindata && \
     LDFLAGS="-buildid=" make \
     FORGEJO_GENERATE_SKIP_HASH=true \
@@ -37,7 +41,7 @@ RUN make clean-no-bindata && \
     GO=go \
     go-check generate-backend static-executable
 
-# Runtime image
+# Stage 3: Runtime image
 FROM alpine:3.19
 
 ARG RELEASE_VERSION
@@ -52,16 +56,13 @@ RUN apk --no-cache add \
     s6 \
     openssh
 
-# Create git user
 RUN mkdir -p /data/git && \
     addgroup -g 1000 git && \
     adduser -D -u 1000 -G git -h /data/git -s /bin/bash git
 
-# Copy built binary
 COPY --from=build /src/gitea /app/gitea/gitea
 RUN ln -s /app/gitea/gitea /app/gitea/forgejo-cli
 
-# Copy entrypoint and s6 config from source
 COPY --from=build /src/docker/root /tmp/local
 RUN chmod 755 /tmp/local/usr/bin/entrypoint && \
     cp -a /tmp/local/* / && \
