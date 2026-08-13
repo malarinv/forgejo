@@ -50,6 +50,7 @@ LABEL org.opencontainers.image.description="Forgejo rootless with package event 
 LABEL org.opencontainers.image.version="${RELEASE_VERSION}"
 
 RUN apk --no-cache add \
+    bash \
     ca-certificates \
     dumb-init \
     openssh-client \
