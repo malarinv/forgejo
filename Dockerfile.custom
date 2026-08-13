@@ -41,6 +41,9 @@ RUN make clean-no-bindata && \
     GO=go \
     go-check generate-backend static-executable
 
+# Build environment-to-ini helper
+RUN go build -trimpath -o /src/environment-to-ini ./contrib/environment-to-ini/environment-to-ini.go
+
 # Stage 3: Rootless runtime image
 FROM alpine:3.19
 
@@ -64,11 +67,12 @@ RUN addgroup -g 1000 git && \
 
 # Copy built binary
 COPY --from=build --chown=root:root /src/gitea /app/gitea/gitea
+COPY --from=build --chown=root:root /src/environment-to-ini /usr/local/bin/environment-to-ini
 RUN ln -s /app/gitea/gitea /app/gitea/forgejo-cli
 
 # Copy rootless entrypoint and setup scripts
 COPY --from=build /src/docker/rootless /tmp/local
-RUN chmod 755 /tmp/local/usr/local/bin/docker-entrypoint.sh && \
+RUN chmod 755 /tmp/local/usr/local/bin/docker-entrypoint.sh /tmp/local/usr/local/bin/gitea && \
     cp -a /tmp/local/* / && \
     rm -rf /tmp/local
 
