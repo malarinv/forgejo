@@ -52,7 +52,8 @@ LABEL org.opencontainers.image.version="${RELEASE_VERSION}"
 RUN apk --no-cache add \
     ca-certificates \
     dumb-init \
-    openssh-client
+    openssh-client \
+    wget
 
 # Create git user (rootless runs as UID 1000)
 RUN addgroup -g 1000 git && \
