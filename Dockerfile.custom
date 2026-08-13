@@ -1,14 +1,15 @@
 # Custom Forgejo build with package event webhook header fix
 # Uses standard Go Alpine images instead of data.forgejo.org
+# Builds natively via Docker buildx QEMU emulation
 
-FROM --platform=$BUILDPLATFORM golang:1.22-alpine AS build
+FROM golang:1.22-alpine AS build
 
-ARG TARGETPLATFORM
 ARG RELEASE_VERSION=15.0.3-custom
 ARG TAGS="sqlite sqlite_unlock_notify"
 
 ENV CGO_ENABLED=1
 ENV GOOS=linux
+ENV GOARCH=arm64
 
 # Install build dependencies
 RUN apk --no-cache add \
@@ -17,14 +18,7 @@ RUN apk --no-cache add \
     nodejs \
     npm \
     musl-dev \
-    gcc \
-    clang \
-    lld
-
-# For ARM64 cross-compilation on AMD64
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-    apk --no-cache add aarch64-none-elf; \
-    fi
+    gcc
 
 WORKDIR /src
 
@@ -34,12 +28,13 @@ COPY . .
 # Build frontend
 RUN make frontend
 
-# Build backend
+# Build backend (use plain go, not xx-go)
 RUN make clean-no-bindata && \
     LDFLAGS="-buildid=" make \
     FORGEJO_GENERATE_SKIP_HASH=true \
     RELEASE_VERSION=${RELEASE_VERSION} \
     GOFLAGS="-trimpath" \
+    GO=go \
     go-check generate-backend static-executable
 
 # Runtime image
@@ -58,7 +53,8 @@ RUN apk --no-cache add \
     openssh
 
 # Create git user
-RUN addgroup -g 1000 git && \
+RUN mkdir -p /data/git && \
+    addgroup -g 1000 git && \
     adduser -D -u 1000 -G git -h /data/git -s /bin/bash git
 
 # Copy built binary
