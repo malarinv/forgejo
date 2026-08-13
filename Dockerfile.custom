@@ -1,5 +1,5 @@
 # Custom Forgejo build with package event webhook header fix
-# Strategy: build frontend natively (AMD64), cross-compile backend for ARM64
+# Rootless variant matching official Dockerfile.rootless
 
 # Stage 1: Build frontend on native platform
 FROM --platform=linux/amd64 node:20-alpine AS frontend
@@ -41,38 +41,46 @@ RUN make clean-no-bindata && \
     GO=go \
     go-check generate-backend static-executable
 
-# Stage 3: Runtime image
+# Stage 3: Rootless runtime image
 FROM alpine:3.19
 
 ARG RELEASE_VERSION
 LABEL org.opencontainers.image.source="https://github.com/malarinv/forgejo"
-LABEL org.opencontainers.image.description="Forgejo with package event webhook header fix"
+LABEL org.opencontainers.image.description="Forgejo rootless with package event webhook header fix"
 LABEL org.opencontainers.image.version="${RELEASE_VERSION}"
 
 RUN apk --no-cache add \
     ca-certificates \
-    linux-pam \
-    su-exec \
-    s6 \
-    openssh
+    dumb-init \
+    openssh-client
 
-RUN mkdir -p /data/git && \
-    addgroup -g 1000 git && \
-    adduser -D -u 1000 -G git -h /data/git -s /bin/bash git
+# Create git user (rootless runs as UID 1000)
+RUN addgroup -g 1000 git && \
+    adduser -D -u 1000 -G git -h /var/lib/gitea/git -s /bin/bash git && \
+    mkdir -p /var/lib/gitea /var/lib/gitea/custom /var/lib/gitea/data /var/lib/gitea/log /tmp/gitea && \
+    chown -R 1000:1000 /var/lib/gitea /tmp/gitea
 
-COPY --from=build /src/gitea /app/gitea/gitea
+# Copy built binary
+COPY --from=build --chown=root:root /src/gitea /app/gitea/gitea
 RUN ln -s /app/gitea/gitea /app/gitea/forgejo-cli
 
-COPY --from=build /src/docker/root /tmp/local
-RUN chmod 755 /tmp/local/usr/bin/entrypoint && \
+# Copy rootless entrypoint and setup scripts
+COPY --from=build /src/docker/rootless /tmp/local
+RUN chmod 755 /tmp/local/usr/local/bin/docker-entrypoint.sh && \
     cp -a /tmp/local/* / && \
     rm -rf /tmp/local
 
-EXPOSE 22 3000
+EXPOSE 2222 3000
 
-ENV USER=git
-ENV GITEA_CUSTOM=/data/gitea
-VOLUME ["/data"]
+USER 1000:1000
+ENV GITEA_WORK_DIR=/var/lib/gitea
+ENV GITEA_CUSTOM=/var/lib/gitea/custom
+ENV GITEA_TEMP=/tmp/gitea
+ENV TMPDIR=/tmp/gitea
+ENV GITEA_APP_INI=${GITEA_CUSTOM}/conf/app.ini
+ENV HOME="/var/lib/gitea/git"
+VOLUME ["/var/lib/gitea"]
+WORKDIR /var/lib/gitea
 
-ENTRYPOINT ["/usr/bin/entrypoint"]
-CMD ["/usr/bin/s6-svscan", "/etc/s6"]
+ENTRYPOINT ["/usr/bin/dumb-init", "/usr/local/bin/docker-entrypoint.sh"]
+CMD ["/usr/local/bin/gitea", "web"]
