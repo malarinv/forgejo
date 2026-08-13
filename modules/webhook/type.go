@@ -69,6 +69,8 @@ func (h HookEventType) Event() string {
 		return "repository"
 	case HookEventRelease:
 		return "release"
+	case HookEventPackage:
+		return "package"
 	case HookEventActionRunFailure:
 		return "action_run_failure"
 	case HookEventActionRunRecover:
