@@ -1,94 +1,112 @@
-# Custom Forgejo build with package event webhook header fix
-# Rootless variant matching official Dockerfile.rootless
+FROM --platform=$BUILDPLATFORM data.forgejo.org/oci/xx AS xx
 
-# Stage 1: Build frontend on native platform
-FROM --platform=linux/amd64 node:20-alpine AS frontend
+FROM --platform=$BUILDPLATFORM data.forgejo.org/oci/golang:1.26-alpine3.23 AS build-env
 
-RUN apk --no-cache add git
-
-WORKDIR /src
-COPY . .
-
-RUN npm install && \
-    npx webpack --mode production
-
-# Stage 2: Build backend for target platform
-FROM --platform=$TARGETPLATFORM golang:1.25-alpine AS build
-
-ARG RELEASE_VERSION=15.0.3-custom
-ARG TAGS="sqlite sqlite_unlock_notify"
-
-ENV CGO_ENABLED=1
-
-RUN apk --no-cache add \
-    build-base \
-    git \
-    musl-dev \
-    gcc
-
-WORKDIR /src
-COPY . .
-
-# Copy pre-built frontend assets
-COPY --from=frontend /src/public/assets ./public/assets
-
-# Build backend
-RUN make clean-no-bindata && \
-    LDFLAGS="-buildid=" make \
-    FORGEJO_GENERATE_SKIP_HASH=true \
-    FORGEJO_VERSION=${RELEASE_VERSION} \
-    RELEASE_VERSION=${RELEASE_VERSION} \
-    GOFLAGS="-trimpath" \
-    GO=go \
-    go-check generate-backend static-executable
-
-# Build environment-to-ini helper
-RUN go build -trimpath -o /src/environment-to-ini ./contrib/environment-to-ini/environment-to-ini.go
-
-# Stage 3: Rootless runtime image
-FROM alpine:3.19
+ARG GOPROXY
+ENV GOPROXY=${GOPROXY:-https://proxy.golang.org,direct}
 
 ARG RELEASE_VERSION
-LABEL org.opencontainers.image.source="https://github.com/malarinv/forgejo"
-LABEL org.opencontainers.image.description="Forgejo rootless with package event webhook header fix"
-LABEL org.opencontainers.image.version="${RELEASE_VERSION}"
+ARG TAGS="sqlite sqlite_unlock_notify"
+ENV TAGS="bindata timetzdata $TAGS"
+ARG CGO_EXTRA_CFLAGS
+
+#
+# Transparently cross compile for the target platform
+#
+COPY --from=xx / /
+ARG TARGETPLATFORM
+RUN apk --no-cache add clang lld
+RUN xx-apk --no-cache add gcc musl-dev
+ENV CGO_ENABLED=1
+RUN xx-go --wrap
+#
+# for go generate and binfmt to find
+# without it the generate phase will fail with
+# #19 25.04 modules/public/public_bindata.go:8: running "go": exit status 1
+# #19 25.39 aarch64-binfmt-P: Could not open '/lib/ld-musl-aarch64.so.1': No such file or directory
+# why exactly is it needed? where is binfmt involved?
+#
+RUN cp /*-alpine-linux-musl*/lib/ld-musl-*.so.1 /lib || true
+
+RUN apk --no-cache add build-base git nodejs npm
+
+COPY . ${GOPATH}/src/forgejo.org
+WORKDIR ${GOPATH}/src/forgejo.org
+
+RUN make clean-no-bindata
+RUN make frontend
+RUN go build contrib/environment-to-ini/environment-to-ini.go && xx-verify environment-to-ini
+RUN make FORGEJO_GENERATE_SKIP_HASH=true FORGEJO_VERSION=$RELEASE_VERSION RELEASE_VERSION=$RELEASE_VERSION go-check generate-backend static-executable && xx-verify gitea
+
+# Copy local files
+COPY docker/rootless /tmp/local
+
+# Set permissions
+RUN chmod 755 /tmp/local/usr/local/bin/docker-entrypoint.sh \
+              /tmp/local/usr/local/bin/docker-setup.sh \
+              /tmp/local/usr/local/bin/gitea \
+              /go/src/forgejo.org/gitea \
+              /go/src/forgejo.org/environment-to-ini
+RUN chmod 644 /go/src/forgejo.org/contrib/autocompletion/bash_autocomplete
+
+FROM data.forgejo.org/oci/alpine:3.23
+ARG RELEASE_VERSION
+LABEL maintainer="contact@forgejo.org" \
+      org.opencontainers.image.authors="Forgejo" \
+      org.opencontainers.image.url="https://forgejo.org" \
+      org.opencontainers.image.documentation="https://forgejo.org/download/#container-image" \
+      org.opencontainers.image.source="https://codeberg.org/forgejo/forgejo" \
+      org.opencontainers.image.version="${RELEASE_VERSION}" \
+      org.opencontainers.image.vendor="Forgejo" \
+      org.opencontainers.image.licenses="GPL-3.0-or-later" \
+      org.opencontainers.image.title="Forgejo. Beyond coding. We forge." \
+      org.opencontainers.image.description="Forgejo is a self-hosted lightweight software forge. Easy to install and low maintenance, it just does the job."
+
+EXPOSE 2222 3000
 
 RUN apk --no-cache add \
     bash \
     ca-certificates \
     dumb-init \
+    gettext \
     git \
+    curl \
+    gnupg \
     openssh-client \
-    wget
+    && rm -rf /var/cache/apk/*
 
-# Create git user (rootless runs as UID 1000)
-RUN addgroup -g 1000 git && \
-    adduser -D -u 1000 -G git -h /var/lib/gitea/git -s /bin/bash git && \
-    mkdir -p /var/lib/gitea /var/lib/gitea/custom /var/lib/gitea/data /var/lib/gitea/log /tmp/gitea && \
-    chown -R 1000:1000 /var/lib/gitea /tmp/gitea
+RUN addgroup \
+    -S -g 1000 \
+    git && \
+  adduser \
+    -S -H -D \
+    -h /var/lib/gitea/git \
+    -s /bin/bash \
+    -u 1000 \
+    -G git \
+    git
 
-# Copy built binary
-COPY --from=build --chown=root:root /src/gitea /app/gitea/gitea
-COPY --from=build --chown=root:root /src/environment-to-ini /usr/local/bin/environment-to-ini
+RUN mkdir -p /var/lib/gitea
+RUN chown git:git /var/lib/gitea
+
+COPY --from=build-env /tmp/local /
+RUN cd /usr/local/bin ; ln -s gitea forgejo
+COPY --from=build-env --chown=root:root /go/src/forgejo.org/gitea /app/gitea/gitea
 RUN ln -s /app/gitea/gitea /app/gitea/forgejo-cli
+COPY --from=build-env --chown=root:root /go/src/forgejo.org/environment-to-ini /usr/local/bin/environment-to-ini
+COPY --from=build-env /go/src/forgejo.org/contrib/autocompletion/bash_autocomplete /etc/profile.d/gitea_bash_autocomplete.sh
 
-# Copy rootless entrypoint and setup scripts
-COPY --from=build /src/docker/rootless /tmp/local
-RUN chmod 755 /tmp/local/usr/local/bin/docker-entrypoint.sh /tmp/local/usr/local/bin/gitea && \
-    cp -a /tmp/local/* / && \
-    rm -rf /tmp/local
-
-EXPOSE 2222 3000
-
+#git:git
 USER 1000:1000
 ENV GITEA_WORK_DIR=/var/lib/gitea
 ENV GITEA_CUSTOM=/var/lib/gitea/custom
 ENV GITEA_TEMP=/tmp/gitea
 ENV TMPDIR=/tmp/gitea
+
 ENV GITEA_APP_INI=${GITEA_CUSTOM}/conf/app.ini
 ENV HOME="/var/lib/gitea/git"
 VOLUME ["/var/lib/gitea"]
 WORKDIR /var/lib/gitea
 
-ENTRYPOINT ["/usr/bin/dumb-init", "/usr/local/bin/docker-entrypoint.sh"]
-CMD ["/usr/local/bin/gitea", "web"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
+CMD []
