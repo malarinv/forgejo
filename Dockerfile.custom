@@ -36,6 +36,7 @@ COPY --from=frontend /src/public/assets ./public/assets
 RUN make clean-no-bindata && \
     LDFLAGS="-buildid=" make \
     FORGEJO_GENERATE_SKIP_HASH=true \
+    FORGEJO_VERSION=${RELEASE_VERSION} \
     RELEASE_VERSION=${RELEASE_VERSION} \
     GOFLAGS="-trimpath" \
     GO=go \
