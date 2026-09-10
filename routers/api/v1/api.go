@@ -1558,6 +1558,19 @@ func Routes() *web.Route {
 				m.Post("/-/unlink", reqToken(), reqPackageAccess(perm.AccessModeWrite), packages.UnlinkPackage)
 			})
 
+			// Package cleanup rules
+			m.Group("/rules", func() {
+				m.Combo("").
+					Get(packages.ListCleanupRules).
+					Post(reqToken(), reqPackageAccess(perm.AccessModeAdmin), bind(api.CreatePackageCleanupRuleOption{}), packages.CreateCleanupRule)
+				m.Group("/{id}", func() {
+					m.Combo("").
+						Get(packages.GetCleanupRule).
+						Patch(reqToken(), reqPackageAccess(perm.AccessModeAdmin), bind(api.EditPackageCleanupRuleOption{}), packages.EditCleanupRule).
+						Delete(reqToken(), reqPackageAccess(perm.AccessModeAdmin), packages.DeleteCleanupRule)
+				})
+			})
+
 			m.Get("/", packages.ListPackages)
 		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryPackage), context.UserAssignmentAPI(), context.PackageAssignmentAPI(), reqPackageAccess(perm.AccessModeRead), checkTokenPublicOnly())
 
