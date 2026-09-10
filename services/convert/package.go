@@ -51,3 +51,20 @@ func ToPackageFile(pfd *packages.PackageFileDescriptor) *api.PackageFile {
 		HashSHA512: pfd.Blob.HashSHA512,
 	}
 }
+
+// ToPackageCleanupRule converts packages.PackageCleanupRule to api.PackageCleanupRule
+func ToPackageCleanupRule(pcr *packages.PackageCleanupRule) *api.PackageCleanupRule {
+	return &api.PackageCleanupRule{
+		ID:            pcr.ID,
+		Enabled:       pcr.Enabled,
+		Type:          string(pcr.Type),
+		KeepCount:     pcr.KeepCount,
+		KeepPattern:   pcr.KeepPattern,
+		RemoveDays:    pcr.RemoveDays,
+		RemovePattern: pcr.RemovePattern,
+		MatchFullName: pcr.MatchFullName,
+		CreatedAt:     pcr.CreatedUnix.AsTime(),
+		UpdatedAt:     pcr.UpdatedUnix.AsTime(),
+	}
+}
+
