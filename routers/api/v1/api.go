@@ -1760,6 +1760,14 @@ func Routes() *web.Route {
 					})
 				})
 			}
+			m.Group("/auth-sources", func() {
+				m.Combo("").Get(admin.ListAuthSources)
+				m.Group("/{id}", func() {
+					m.Combo("").
+						Get(admin.GetAuthSource).
+						Patch(bind(api.EditOAuth2AuthSourceOption{}), admin.EditOAuth2AuthSource)
+				})
+			})
 		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryAdmin), reqToken(), reqSiteAdmin())
 
 		m.Group("/topics", func() {
