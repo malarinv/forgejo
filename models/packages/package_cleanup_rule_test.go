@@ -19,7 +19,6 @@ import (
 // The functions are upstream (v15 and v17 both have them), so the test is
 // valid on either base.
 func TestPackageCleanupRuleCRUD(t *testing.T) {
-	defer unittest.OverrideFixtures("models/fixtures")()
 	require.NoError(t, unittest.PrepareTestDatabase())
 
 	// Create

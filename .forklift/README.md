@@ -179,6 +179,6 @@ Operators record the last successful sync of the fork this README ships with
 here — the `sync-upstream` skill's post-rebase checklist points at this section
 when the fork keeps no other maintenance doc:
 
-- **Date:**
-- **Upstream base:**
-- **Notes:**
+- **Date:** 2026-11-14
+- **Upstream base:** `7aff4d30c3` (`origin/v17.0/forgejo`, one-time rebase from the v15 line; v17.0.1 tag = `363f3dc30b`, branch head 10 commits ahead — v17.0.x patch fixes only)
+- **Notes:** One-time rebase done as cherry-pick of the 4 Malarbase feature/build commits onto `origin/v17.0/forgejo` (the 130 v15 backport/renovate commits were dropped as superseded; `git rebase --onto` aborted on go.mod/go.sum backport noise — cherry-pick is the equivalent end state). v17 additions folded in: `KeepLastDownloadDays`/`RemoveLastDownloadDays` round-trip in the cleanup-rules API, and `Dockerfile.custom` regenerated from v17's `Dockerfile.rootless` with the `RELEASE_VERSION`/`FORGEJO_VERSION` deltas. Protecting tests: `TestHookEventTypeEventPackage` (fails on stock v17, verified) and `TestPackageCleanupRuleCRUD`.

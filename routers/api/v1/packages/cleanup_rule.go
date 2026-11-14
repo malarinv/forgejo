@@ -35,7 +35,7 @@ func ListCleanupRules(ctx *context.APIContext) {
 	//   "404":
 	//     "$ref": "#/responses/notFound"
 
-	pcrs, err := packages_model.GetCleanupRulesByOwner(ctx, ctx.Package.Owner.ID)
+	pcrs, err := packages_model.GetCleanupRulesByOwner(ctx, ctx.Package().Owner.ID)
 	if err != nil {
 		ctx.Error(http.StatusInternalServerError, "GetCleanupRulesByOwner", err)
 		return
@@ -107,7 +107,7 @@ func CreateCleanupRule(ctx *context.APIContext) {
 	}
 
 	// Check if rule already exists for this package type
-	has, err := packages_model.HasOwnerCleanupRuleForPackageType(ctx, ctx.Package.Owner.ID, pType)
+	has, err := packages_model.HasOwnerCleanupRuleForPackageType(ctx, ctx.Package().Owner.ID, pType)
 	if err != nil {
 		ctx.Error(http.StatusInternalServerError, "HasOwnerCleanupRuleForPackageType", err)
 		return
@@ -119,7 +119,7 @@ func CreateCleanupRule(ctx *context.APIContext) {
 
 	pcr := &packages_model.PackageCleanupRule{
 		Enabled:                form.Enabled,
-		OwnerID:                ctx.Package.Owner.ID,
+		OwnerID:                ctx.Package().Owner.ID,
 		Type:                   pType,
 		KeepCount:              form.KeepCount,
 		KeepPattern:            form.KeepPattern,
@@ -306,7 +306,7 @@ func getCleanupRuleFromContext(ctx *context.APIContext) *packages_model.PackageC
 		}
 		return nil
 	}
-	if pcr.OwnerID != ctx.Package.Owner.ID {
+	if pcr.OwnerID != ctx.Package().Owner.ID {
 		ctx.NotFound()
 		return nil
 	}

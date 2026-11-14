@@ -74,7 +74,10 @@ harness:
     test_globs: ["*_test.go", "tests/integration/", "tests/e2e/", "models/fixtures/"]
     typecheck_command: "GOWORK=off go build ./modules/... ./routers/... ./services/... ./models/..."
     test_command: "GOWORK=off go test -tags 'sqlite sqlite_unlock_notify' ./models/packages/... ./models/webhook/... ./modules/webhook/..."
-    lint_command: "GOWORK=off go vet ./modules/... ./routers/... ./services/... ./models/..."
+    # services/auth/source has a pre-existing test-only import cycle on stock
+    # v17 (main_test.go -> services/webhook -> ... -> services/auth/source);
+    # vet it with everything else but that package.
+    lint_command: "GOWORK=off go vet $(go list ./modules/... ./routers/... ./services/... ./models/... | grep -v services/auth/source$)"
     conflict_marker_globs:
       - "modules/**/*.go"
       - "routers/**/*.go"
