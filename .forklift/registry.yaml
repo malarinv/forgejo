@@ -1,0 +1,123 @@
+generatedAt: "2026-11-14T19:10:00Z"
+expected_fork_commit_count: 0   # placeholder; forklift sync --rebaseline-only sets the converged value after the v17 rebase
+features:
+  - name: "admin-auth-sources-api"
+    description: "REST API for listing/reading/PATCHing OAuth2 auth sources (group_team_map, admin_group, group_claim_name, group_team_map_removal, quota maps). Consumed by Backstage repo-reconciler forgejoTeams.ts."
+    owned_paths:
+      - "modules/structs/auth_source.go"
+      - "routers/api/v1/admin/auth_source.go"
+      - "services/convert/auth_source.go"
+      - "tests/integration/api_admin_auth_source_test.go"
+    protecting_tests:
+      - "tests/integration/api_admin_auth_source_test.go"
+    status: active
+  - name: "package-cleanup-rules-api"
+    description: "REST CRUD for package cleanup rules at /api/v1/packages/{owner}/rules. Consumed by Backstage repo-reconciler ensurePackageCleanupRules."
+    owned_paths:
+      - "modules/structs/package_cleanup.go"
+      - "routers/api/v1/packages/cleanup_rule.go"
+      - "services/convert/package.go"
+    protecting_tests:
+      - "models/packages/package_cleanup_rule_test.go"
+    status: active
+  - name: "webhook-package-event-header"
+    description: "case HookEventPackage in HookEventType.Event() so X-Gitea-Event is 'package' for package webhooks; without it the Flux receiver cannot match package pushes."
+    owned_paths:
+      - "modules/webhook/type.go"
+    protecting_tests:
+      - "modules/webhook/event_test.go"
+    status: active
+  - name: "fork-build"
+    description: "Container build: Dockerfile.custom (v17 upstream rootless Dockerfile + RELEASE_VERSION default + FORGEJO_VERSION make arg) and GHA workflow building linux/arm64 to ghcr.io/malarinv/forgejo."
+    owned_paths:
+      - "Dockerfile.custom"
+      - ".github/workflows/build.yaml"
+      - "mise.toml"
+    coverage_exempt: "Build wiring; verified by the produced image and the cluster smoke checks, not unit tests."
+    status: active
+divergences: []
+removals: []
+owned_symbols:
+  - file: "routers/api/v1/api.go"
+    feature: "admin-auth-sources-api"
+    symbols:
+      - name: "m.Group(\"/auth-sources\", ...)"
+        location: "routers/api/v1/api.go, admin group tail (after /unadopted, before the admin group's closing tokenRequiresScopes line)"
+        description: "Route registration for /api/v1/admin/auth-sources (list/get/PATCH)"
+  - file: "routers/api/v1/api.go"
+    feature: "package-cleanup-rules-api"
+    symbols:
+      - name: "m.Group(\"/rules\", ...)"
+        location: "routers/api/v1/api.go, packages group (after m.Post(\"/-/unlink\", ...), before m.Get(\"/\", packages.ListPackages))"
+        description: "Route registration for /api/v1/packages/{owner}/rules CRUD"
+  - file: "modules/webhook/type.go"
+    feature: "webhook-package-event-header"
+    symbols:
+      - name: "case HookEventPackage"
+        location: "modules/webhook/type.go, Event() switch (immediately after case HookEventRelease)"
+        description: "Two-line case mapping HookEventPackage to the 'package' event header"
+harness:
+  version: 1
+  fork:
+    name: "malarinv/forgejo"
+    short: "forgejo-fork"
+    remote: "github"
+    branch: "v17"
+  upstream:
+    name: "forgejo/forgejo"
+    short: "forgejo"
+    remote: "origin"
+    branch: "v17.0/forgejo"
+  project:
+    languages: ["go", "dockerfile", "yaml"]
+    source_roots: ["modules/", "routers/", "services/", "models/", "cmd/", "tests/"]
+    test_globs: ["*_test.go", "tests/integration/", "tests/e2e/", "models/fixtures/"]
+    typecheck_command: "GOWORK=off go build ./modules/... ./routers/... ./services/... ./models/..."
+    test_command: "GOWORK=off go test -tags 'sqlite sqlite_unlock_notify' ./models/packages/... ./models/webhook/... ./modules/webhook/..."
+    lint_command: "GOWORK=off go vet ./modules/... ./routers/... ./services/... ./models/..."
+    conflict_marker_globs:
+      - "modules/**/*.go"
+      - "routers/**/*.go"
+      - "services/**/*.go"
+      - "models/**/*.go"
+      - "Dockerfile*"
+      - ".github/workflows/*.yaml"
+    package_aliases: {}
+  checks:
+    behavioral_source_regex: "^(modules|routers|services|models)/.*\\.go$"
+    native_sentinel: null
+    footprint_baseline: ".forklift/footprint-baseline.json"
+    excludes: [".forklift/", ".omp/"]
+    semantic_drift:
+      tool: "difftastic"
+  sync_command: "bun /var/home/user/Work/forklift/bin/forklift sync"
+  sync_runner: "forklift sync"
+  sync_state_path: "~/.omp/forklift/forgejo-sync-state.json"
+  sync_log_path: "~/.omp/forklift/forgejo-sync-log.jsonl"
+  fork_doc: ".forklift/README.md"
+knowledge: |
+  ## Forgejo fork conflict semantics
+
+  - The fork is a feature fork: 3 behavioral features graft small hunks into 2 shared files
+    (routers/api/v1/api.go, modules/webhook/type.go); everything else is fork-owned files.
+    Upstream rewrites line numbers every release, so conflicts in the shared files are context
+    drift, not semantic.
+  - routers/api/v1/api.go graft points:
+    - /rules group: inside m.Group("/packages/{username}", ...), after m.Post("/-/unlink", ...)
+      and before m.Get("/", packages.ListPackages).
+    - /auth-sources group: inside m.Group("/admin", ...), after the /unadopted group, before the
+      admin group's closing `}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryAdmin), ...)` line.
+  - modules/webhook/type.go graft point: inside func (h HookEventType) Event(), immediately after
+    `case HookEventRelease: return "release"`.
+  - v17 renamed nothing the features call (verified against v17.0.1 source): auth.GetSourceByID,
+    auth.UpdateSource, db.Find[auth.Source], oauth2.Source fields (GroupTeamMap, AdminGroup,
+    GroupClaimName, GroupTeamMapRemoval, quota fields) and the packages cleanup-rule model funcs
+    all exist with the same signatures. A conflict inside routers/api/v1/admin/auth_source.go or
+    cleanup_rule.go is upstream context change only — take upstream structure, re-apply handlers.
+  - services/convert/package.go: v17 added two PackageCleanupRule fields (KeepLastDownloadDays,
+    RemoveLastDownloadDays). ToPackageCleanupRule must map them when re-applying the fork's
+    converter addition, or the API returns zeroed values (silent data bug, not a compile error).
+post_sync_knowledge: |
+  - Verify the binary version string: Dockerfile.custom bakes RELEASE_VERSION into the version
+    output via FORGEJO_VERSION; `gitea --version` must print `17.0.1-fork`, not a git-describe
+    hash, or the GHA shallow-clone override regressed.
