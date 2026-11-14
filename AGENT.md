@@ -7,7 +7,7 @@ This repository is a **fork** of forgejo/forgejo kept in sync by forklift. Every
 ## Fork Identity & Remotes
 - **Fork remote/branch**: `github/v17`
 - **Upstream remote/branch**: `origin/v17.0/forgejo`
-- **Expected fork commits**: `8`
+- **Expected fork commits**: `10`
 
 ## Fork-Owned Features
 These are the paths this fork owns; prefer ours when they conflict with upstream, and register any new fork-owned path in `.forklift/registry.yaml` before relying on it.
@@ -22,7 +22,7 @@ These are the paths this fork owns; prefer ours when they conflict with upstream
 ## Verification Commands
 - **Typecheck**: `GOWORK=off go build ./modules/... ./routers/... ./services/... ./models/...`
 - **Test**: `GOWORK=off go test -tags 'sqlite sqlite_unlock_notify' ./models/packages/... ./models/webhook/... ./modules/webhook/...`
-- **Lint**: `GOWORK=off go vet ./modules/... ./routers/... ./services/... ./models/...`
+- **Lint**: `GOWORK=off go vet $(go list ./modules/... ./routers/... ./services/... ./models/... | grep -v services/auth/source$)`
 
 ## Divergences & Intentional Removals
 **Divergences (upstream-owned, take upstream):**

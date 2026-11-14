@@ -1,5 +1,5 @@
 generatedAt: "2026-11-14T19:10:00Z"
-expected_fork_commit_count: 8
+expected_fork_commit_count: 10
 features:
   - name: "admin-auth-sources-api"
     description: "REST API for listing/reading/PATCHing OAuth2 auth sources (group_team_map, admin_group, group_claim_name, group_team_map_removal, quota maps). Consumed by Backstage repo-reconciler forgejoTeams.ts."
