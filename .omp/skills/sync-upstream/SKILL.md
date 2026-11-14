@@ -169,8 +169,8 @@ These are forgejo-fork-owned files. Conflicts here prefer ours unless upstream's
 
 | Feature | Owned files |
 |---------|------------|
-| admin-auth-sources-api | `modules/structs/auth_source.go`, `routers/api/v1/admin/auth_source.go`, `services/convert/auth_source.go`, `tests/integration/api_admin_auth_source_test.go` |
-| package-cleanup-rules-api | `modules/structs/package_cleanup.go`, `routers/api/v1/packages/cleanup_rule.go`, `services/convert/package.go` |
+| admin-auth-sources-api | `modules/structs/auth_source.go`, `routers/api/v1/admin/auth_source.go`, `routers/api/v1/api.go`, `services/convert/auth_source.go`, `tests/integration/api_admin_auth_source_test.go` |
+| package-cleanup-rules-api | `modules/structs/package_cleanup.go`, `routers/api/v1/api.go`, `routers/api/v1/packages/cleanup_rule.go`, `services/convert/package.go` |
 | webhook-package-event-header | `modules/webhook/type.go` |
 | fork-build | `Dockerfile.custom`, `.github/workflows/build.yaml`, `mise.toml` |
 

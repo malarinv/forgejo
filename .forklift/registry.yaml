@@ -6,6 +6,7 @@ features:
     owned_paths:
       - "modules/structs/auth_source.go"
       - "routers/api/v1/admin/auth_source.go"
+      - "routers/api/v1/api.go"
       - "services/convert/auth_source.go"
       - "tests/integration/api_admin_auth_source_test.go"
     protecting_tests:
@@ -15,6 +16,7 @@ features:
     description: "REST CRUD for package cleanup rules at /api/v1/packages/{owner}/rules. Consumed by Backstage repo-reconciler ensurePackageCleanupRules."
     owned_paths:
       - "modules/structs/package_cleanup.go"
+      - "routers/api/v1/api.go"
       - "routers/api/v1/packages/cleanup_rule.go"
       - "services/convert/package.go"
     protecting_tests:
