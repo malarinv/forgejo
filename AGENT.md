@@ -7,7 +7,7 @@ This repository is a **fork** of forgejo/forgejo kept in sync by forklift. Every
 ## Fork Identity & Remotes
 - **Fork remote/branch**: `github/v17`
 - **Upstream remote/branch**: `origin/v17.0/forgejo`
-- **Expected fork commits**: `10`
+- **Expected fork commits**: `12`
 
 ## Fork-Owned Features
 These are the paths this fork owns; prefer ours when they conflict with upstream, and register any new fork-owned path in `.forklift/registry.yaml` before relying on it.
