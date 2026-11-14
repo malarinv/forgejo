@@ -118,14 +118,16 @@ func CreateCleanupRule(ctx *context.APIContext) {
 	}
 
 	pcr := &packages_model.PackageCleanupRule{
-		Enabled:       form.Enabled,
-		OwnerID:       ctx.Package.Owner.ID,
-		Type:          pType,
-		KeepCount:     form.KeepCount,
-		KeepPattern:   form.KeepPattern,
-		RemoveDays:    form.RemoveDays,
-		RemovePattern: form.RemovePattern,
-		MatchFullName: form.MatchFullName,
+		Enabled:                form.Enabled,
+		OwnerID:                ctx.Package.Owner.ID,
+		Type:                   pType,
+		KeepCount:              form.KeepCount,
+		KeepPattern:            form.KeepPattern,
+		RemoveDays:             form.RemoveDays,
+		RemovePattern:          form.RemovePattern,
+		MatchFullName:          form.MatchFullName,
+		KeepLastDownloadDays:   form.KeepLastDownloadDays,
+		RemoveLastDownloadDays: form.RemoveLastDownloadDays,
 	}
 
 	pcr, err = packages_model.InsertCleanupRule(ctx, pcr)
@@ -239,6 +241,12 @@ func EditCleanupRule(ctx *context.APIContext) {
 	}
 	if form.MatchFullName != nil {
 		pcr.MatchFullName = *form.MatchFullName
+	}
+	if form.KeepLastDownloadDays != nil {
+		pcr.KeepLastDownloadDays = *form.KeepLastDownloadDays
+	}
+	if form.RemoveLastDownloadDays != nil {
+		pcr.RemoveLastDownloadDays = *form.RemoveLastDownloadDays
 	}
 
 	if err := packages_model.UpdateCleanupRule(ctx, pcr); err != nil {

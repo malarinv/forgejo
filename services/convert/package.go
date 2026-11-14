@@ -55,16 +55,17 @@ func ToPackageFile(pfd *packages.PackageFileDescriptor) *api.PackageFile {
 // ToPackageCleanupRule converts packages.PackageCleanupRule to api.PackageCleanupRule
 func ToPackageCleanupRule(pcr *packages.PackageCleanupRule) *api.PackageCleanupRule {
 	return &api.PackageCleanupRule{
-		ID:            pcr.ID,
-		Enabled:       pcr.Enabled,
-		Type:          string(pcr.Type),
-		KeepCount:     pcr.KeepCount,
-		KeepPattern:   pcr.KeepPattern,
-		RemoveDays:    pcr.RemoveDays,
-		RemovePattern: pcr.RemovePattern,
-		MatchFullName: pcr.MatchFullName,
-		CreatedAt:     pcr.CreatedUnix.AsTime(),
-		UpdatedAt:     pcr.UpdatedUnix.AsTime(),
+		ID:                     pcr.ID,
+		Enabled:                pcr.Enabled,
+		Type:                   string(pcr.Type),
+		KeepCount:              pcr.KeepCount,
+		KeepPattern:            pcr.KeepPattern,
+		RemoveDays:             pcr.RemoveDays,
+		RemovePattern:          pcr.RemovePattern,
+		MatchFullName:          pcr.MatchFullName,
+		KeepLastDownloadDays:   pcr.KeepLastDownloadDays,
+		RemoveLastDownloadDays: pcr.RemoveLastDownloadDays,
+		CreatedAt:              pcr.CreatedUnix.AsTime(),
+		UpdatedAt:              pcr.UpdatedUnix.AsTime(),
 	}
 }
-

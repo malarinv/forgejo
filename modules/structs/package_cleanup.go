@@ -17,6 +17,9 @@ type PackageCleanupRule struct {
 	RemoveDays    int    `json:"remove_days"`
 	RemovePattern string `json:"remove_pattern"`
 	MatchFullName bool   `json:"match_full_name"`
+	// v17 model fields, round-tripped by the fork's converter.
+	KeepLastDownloadDays   int `json:"keep_last_download_days"`
+	RemoveLastDownloadDays int `json:"remove_last_download_days"`
 	// swagger:strfmt date-time
 	CreatedAt time.Time `json:"created_at"`
 	// swagger:strfmt date-time
@@ -32,6 +35,9 @@ type CreatePackageCleanupRuleOption struct {
 	RemoveDays    int    `json:"remove_days"`
 	RemovePattern string `json:"remove_pattern"`
 	MatchFullName bool   `json:"match_full_name"`
+	// v17 model fields, round-tripped by the fork's converter.
+	KeepLastDownloadDays   int `json:"keep_last_download_days"`
+	RemoveLastDownloadDays int `json:"remove_last_download_days"`
 }
 
 // EditPackageCleanupRuleOption options when updating a package cleanup rule
@@ -42,4 +48,7 @@ type EditPackageCleanupRuleOption struct {
 	RemoveDays    *int    `json:"remove_days"`
 	RemovePattern *string `json:"remove_pattern"`
 	MatchFullName *bool   `json:"match_full_name"`
+	// v17 model fields, round-tripped by the fork's converter.
+	KeepLastDownloadDays   *int `json:"keep_last_download_days"`
+	RemoveLastDownloadDays *int `json:"remove_last_download_days"`
 }
