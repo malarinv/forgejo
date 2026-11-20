@@ -636,8 +636,12 @@ func CreateBranchProtection(ctx *context.APIContext) {
 		return
 	}
 	var whitelistTeams, mergeWhitelistTeams, approvalsWhitelistTeams []int64
+	var orgID int64
 	if repo.Owner.IsOrganization() {
-		whitelistTeams, err = organization.GetTeamIDsByNames(ctx, repo.OwnerID, form.PushWhitelistTeams, false)
+		orgID = repo.OwnerID
+	}
+	if len(form.PushWhitelistTeams) > 0 {
+		whitelistTeams, err = organization.GetTeamIDsByNames(ctx, orgID, form.PushWhitelistTeams, false)
 		if err != nil {
 			if organization.IsErrTeamNotExist(err) {
 				ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
@@ -646,7 +650,9 @@ func CreateBranchProtection(ctx *context.APIContext) {
 			ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
 			return
 		}
-		mergeWhitelistTeams, err = organization.GetTeamIDsByNames(ctx, repo.OwnerID, form.MergeWhitelistTeams, false)
+	}
+	if len(form.MergeWhitelistTeams) > 0 {
+		mergeWhitelistTeams, err = organization.GetTeamIDsByNames(ctx, orgID, form.MergeWhitelistTeams, false)
 		if err != nil {
 			if organization.IsErrTeamNotExist(err) {
 				ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
@@ -655,7 +661,9 @@ func CreateBranchProtection(ctx *context.APIContext) {
 			ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
 			return
 		}
-		approvalsWhitelistTeams, err = organization.GetTeamIDsByNames(ctx, repo.OwnerID, form.ApprovalsWhitelistTeams, false)
+	}
+	if len(form.ApprovalsWhitelistTeams) > 0 {
+		approvalsWhitelistTeams, err = organization.GetTeamIDsByNames(ctx, orgID, form.ApprovalsWhitelistTeams, false)
 		if err != nil {
 			if organization.IsErrTeamNotExist(err) {
 				ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
@@ -921,46 +929,48 @@ func EditBranchProtection(ctx *context.APIContext) {
 	}
 
 	var whitelistTeams, mergeWhitelistTeams, approvalsWhitelistTeams []int64
+	var orgID int64
 	if repo.Owner.IsOrganization() {
-		if form.PushWhitelistTeams != nil {
-			whitelistTeams, err = organization.GetTeamIDsByNames(ctx, repo.OwnerID, form.PushWhitelistTeams, false)
-			if err != nil {
-				if organization.IsErrTeamNotExist(err) {
-					ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
-					return
-				}
-				ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
+		orgID = repo.OwnerID
+	}
+	if form.PushWhitelistTeams != nil {
+		whitelistTeams, err = organization.GetTeamIDsByNames(ctx, orgID, form.PushWhitelistTeams, false)
+		if err != nil {
+			if organization.IsErrTeamNotExist(err) {
+				ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
 				return
 			}
-		} else {
-			whitelistTeams = protectBranch.WhitelistTeamIDs
+			ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
+			return
 		}
-		if form.MergeWhitelistTeams != nil {
-			mergeWhitelistTeams, err = organization.GetTeamIDsByNames(ctx, repo.OwnerID, form.MergeWhitelistTeams, false)
-			if err != nil {
-				if organization.IsErrTeamNotExist(err) {
-					ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
-					return
-				}
-				ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
+	} else {
+		whitelistTeams = protectBranch.WhitelistTeamIDs
+	}
+	if form.MergeWhitelistTeams != nil {
+		mergeWhitelistTeams, err = organization.GetTeamIDsByNames(ctx, orgID, form.MergeWhitelistTeams, false)
+		if err != nil {
+			if organization.IsErrTeamNotExist(err) {
+				ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
 				return
 			}
-		} else {
-			mergeWhitelistTeams = protectBranch.MergeWhitelistTeamIDs
+			ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
+			return
 		}
-		if form.ApprovalsWhitelistTeams != nil {
-			approvalsWhitelistTeams, err = organization.GetTeamIDsByNames(ctx, repo.OwnerID, form.ApprovalsWhitelistTeams, false)
-			if err != nil {
-				if organization.IsErrTeamNotExist(err) {
-					ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
-					return
-				}
-				ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
+	} else {
+		mergeWhitelistTeams = protectBranch.MergeWhitelistTeamIDs
+	}
+	if form.ApprovalsWhitelistTeams != nil {
+		approvalsWhitelistTeams, err = organization.GetTeamIDsByNames(ctx, orgID, form.ApprovalsWhitelistTeams, false)
+		if err != nil {
+			if organization.IsErrTeamNotExist(err) {
+				ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
 				return
 			}
-		} else {
-			approvalsWhitelistTeams = protectBranch.ApprovalsWhitelistTeamIDs
+			ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
+			return
 		}
+	} else {
+		approvalsWhitelistTeams = protectBranch.ApprovalsWhitelistTeamIDs
 	}
 
 	err = git_model.UpdateProtectBranch(ctx, ctx.Repo().Repository, protectBranch, git_model.WhitelistOptions{

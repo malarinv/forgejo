@@ -172,6 +172,7 @@ These are forgejo-fork-owned files. Conflicts here prefer ours unless upstream's
 | admin-auth-sources-api | `modules/structs/auth_source.go`, `routers/api/v1/admin/auth_source.go`, `routers/api/v1/api.go`, `services/convert/auth_source.go`, `tests/integration/api_admin_auth_source_test.go` |
 | package-cleanup-rules-api | `modules/structs/package_cleanup.go`, `routers/api/v1/api.go`, `routers/api/v1/packages/cleanup_rule.go`, `services/convert/package.go` |
 | webhook-package-event-header | `modules/webhook/type.go` |
+| cross-org-team-whitelist | `models/organization/team.go`, `models/organization/team_test.go`, `routers/api/v1/repo/branch.go`, `routers/api/v1/repo/tag.go`, `services/convert/convert.go` |
 | fork-build | `Dockerfile.custom`, `.github/workflows/build.yaml`, `mise.toml` |
 
 > **Note:** The § Owned Symbols table below is generally more current than this § Feature Stack, because new shared-file symbols are registered immediately while high-level feature rows may lag. After any feature merge, audit both tables.
@@ -181,6 +182,19 @@ These are forgejo-fork-owned files. Conflicts here prefer ours unless upstream's
 When a conflict occurs in a file shared with upstream, the Feature Stack tells you "prefer ours"
 but doesn't tell you *which lines are ours*. This section lists the exact symbols each feature
 owns inside shared files.
+
+### team.go (models/organization/team.go)
+
+| Feature | Symbol | Location | Description |
+|---------|--------|----------|-------------|
+| GetTeamIDsByNames | models/organization/team.go, GetTeamIDsByNames | Cross-org team resolution (<org>/<team> and fallback) |
+| GetTeamsByIDs | models/organization/team.go, GetTeamsByIDs | Batch team retrieval by IDs |
+
+### convert.go (services/convert/convert.go)
+
+| Feature | Symbol | Location | Description |
+|---------|--------|----------|-------------|
+| getTeamWhitelistNames | services/convert/convert.go, getTeamWhitelistNames | Batch team name resolution across orgs |
 
 ### api.go (routers/api/v1/api.go)
 

@@ -243,10 +243,39 @@ func GetTeam(ctx context.Context, orgID int64, name string) (*Team, error) {
 }
 
 // GetTeamIDsByNames returns a slice of team ids corresponds to names.
+// It supports cross-organization team names formatted as "<org>/<team>"
+// as well as plain team names falling back across organizations if not found in orgID.
 func GetTeamIDsByNames(ctx context.Context, orgID int64, names []string, ignoreNonExistent bool) ([]int64, error) {
 	ids := make([]int64, 0, len(names))
 	for _, name := range names {
-		u, err := GetTeam(ctx, orgID, name)
+		var u *Team
+		var err error
+		if orgName, teamName, ok := strings.Cut(name, "/"); ok {
+			targetOrg, orgErr := GetOrgByName(ctx, orgName)
+			if orgErr != nil {
+				if IsErrOrgNotExist(orgErr) {
+					err = ErrTeamNotExist{0, 0, name}
+				} else {
+					err = orgErr
+				}
+			} else {
+				u, err = GetTeam(ctx, targetOrg.ID, teamName)
+			}
+		} else {
+			if orgID > 0 {
+				u, err = GetTeam(ctx, orgID, name)
+			} else {
+				err = ErrTeamNotExist{orgID, 0, name}
+			}
+			if err != nil && IsErrTeamNotExist(err) {
+				var teams []*Team
+				findErr := db.GetEngine(ctx).Where("lower_name = ?", strings.ToLower(name)).Find(&teams)
+				if findErr == nil && len(teams) > 0 {
+					u = teams[0]
+					err = nil
+				}
+			}
+		}
 		if err != nil {
 			if ignoreNonExistent {
 				continue
@@ -256,6 +285,15 @@ func GetTeamIDsByNames(ctx context.Context, orgID int64, names []string, ignoreN
 		ids = append(ids, u.ID)
 	}
 	return ids, nil
+}
+
+// GetTeamsByIDs returns teams by given IDs.
+func GetTeamsByIDs(ctx context.Context, teamIDs []int64) ([]*Team, error) {
+	if len(teamIDs) == 0 {
+		return nil, nil
+	}
+	teams := make([]*Team, 0, len(teamIDs))
+	return teams, db.GetEngine(ctx).In("id", teamIDs).Find(&teams)
 }
 
 // GetOwnerTeam returns team by given team name and organization.

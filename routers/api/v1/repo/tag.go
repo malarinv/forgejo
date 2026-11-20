@@ -474,8 +474,12 @@ func CreateTagProtection(ctx *context.APIContext) {
 		return
 	}
 
-	if repo.Owner.IsOrganization() {
-		whitelistTeams, err = organization.GetTeamIDsByNames(ctx, repo.OwnerID, form.WhitelistTeams, false)
+	if len(form.WhitelistTeams) > 0 {
+		var orgID int64
+		if repo.Owner.IsOrganization() {
+			orgID = repo.OwnerID
+		}
+		whitelistTeams, err = organization.GetTeamIDsByNames(ctx, orgID, form.WhitelistTeams, false)
 		if err != nil {
 			if organization.IsErrTeamNotExist(err) {
 				ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
@@ -572,16 +576,18 @@ func EditTagProtection(ctx *context.APIContext) {
 
 	var whitelistUsers, whitelistTeams []int64
 	if form.WhitelistTeams != nil {
+		var orgID int64
 		if repo.Owner.IsOrganization() {
-			whitelistTeams, err = organization.GetTeamIDsByNames(ctx, repo.OwnerID, form.WhitelistTeams, false)
-			if err != nil {
-				if organization.IsErrTeamNotExist(err) {
-					ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
-					return
-				}
-				ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
+			orgID = repo.OwnerID
+		}
+		whitelistTeams, err = organization.GetTeamIDsByNames(ctx, orgID, form.WhitelistTeams, false)
+		if err != nil {
+			if organization.IsErrTeamNotExist(err) {
+				ctx.Error(http.StatusUnprocessableEntity, "Team does not exist", err)
 				return
 			}
+			ctx.Error(http.StatusInternalServerError, "GetTeamIDsByNames", err)
+			return
 		}
 		pt.AllowlistTeamIDs = whitelistTeams
 	}

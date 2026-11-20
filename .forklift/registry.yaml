@@ -1,5 +1,5 @@
-generatedAt: "2026-11-14T19:10:00Z"
-expected_fork_commit_count: 12
+generatedAt: "2026-11-20T19:30:00Z"
+expected_fork_commit_count: 13
 features:
   - name: "admin-auth-sources-api"
     description: "REST API for listing/reading/PATCHing OAuth2 auth sources (group_team_map, admin_group, group_claim_name, group_team_map_removal, quota maps). Consumed by Backstage repo-reconciler forgejoTeams.ts."
@@ -29,6 +29,17 @@ features:
     protecting_tests:
       - "modules/webhook/event_test.go"
     status: active
+  - name: "cross-org-team-whitelist"
+    description: "Support cross-organization team resolution (<org>/<team> and fallback) in branch and tag protection whitelists, plus faithful team reporting in API converters."
+    owned_paths:
+      - "models/organization/team.go"
+      - "models/organization/team_test.go"
+      - "routers/api/v1/repo/branch.go"
+      - "routers/api/v1/repo/tag.go"
+      - "services/convert/convert.go"
+    protecting_tests:
+      - "models/organization/team_test.go"
+    status: active
   - name: "fork-build"
     description: "Container build: Dockerfile.custom (v17 upstream rootless Dockerfile + RELEASE_VERSION default + FORGEJO_VERSION make arg) and GHA workflow building linux/arm64 to ghcr.io/malarinv/forgejo."
     owned_paths:
@@ -40,6 +51,21 @@ features:
 divergences: []
 removals: []
 owned_symbols:
+  - file: "models/organization/team.go"
+    feature: "cross-org-team-whitelist"
+    symbols:
+      - name: "GetTeamIDsByNames"
+        location: "models/organization/team.go, GetTeamIDsByNames"
+        description: "Cross-org team resolution (<org>/<team> and fallback)"
+      - name: "GetTeamsByIDs"
+        location: "models/organization/team.go, GetTeamsByIDs"
+        description: "Batch team retrieval by IDs"
+  - file: "services/convert/convert.go"
+    feature: "cross-org-team-whitelist"
+    symbols:
+      - name: "getTeamWhitelistNames"
+        location: "services/convert/convert.go, getTeamWhitelistNames"
+        description: "Batch team name resolution across orgs"
   - file: "routers/api/v1/api.go"
     feature: "admin-auth-sources-api"
     symbols:

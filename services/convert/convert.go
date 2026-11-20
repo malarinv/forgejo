@@ -131,6 +131,23 @@ func getWhitelistEntities[T *user_model.User | *organization.Team](entities []T,
 	return whitelistNames
 }
 
+// getTeamWhitelistNames returns team names by their IDs across organizations.
+func getTeamWhitelistNames(ctx context.Context, teamIDs []int64) []string {
+	if len(teamIDs) == 0 {
+		return []string{}
+	}
+	teams, err := organization.GetTeamsByIDs(ctx, teamIDs)
+	if err != nil {
+		log.Error("GetTeamsByIDs: %v", err)
+		return []string{}
+	}
+	names := make([]string, 0, len(teams))
+	for _, team := range teams {
+		names = append(names, team.Name)
+	}
+	return names
+}
+
 // ToBranchProtection convert a ProtectedBranch to api.BranchProtection
 func ToBranchProtection(ctx context.Context, bp *git_model.ProtectedBranch, repo *repo_model.Repository) *api.BranchProtection {
 	readers, err := access_model.GetRepoReaders(ctx, repo)
@@ -142,14 +159,9 @@ func ToBranchProtection(ctx context.Context, bp *git_model.ProtectedBranch, repo
 	mergeWhitelistUsernames := getWhitelistEntities(readers, bp.MergeWhitelistUserIDs)
 	approvalsWhitelistUsernames := getWhitelistEntities(readers, bp.ApprovalsWhitelistUserIDs)
 
-	teamReaders, err := organization.OrgFromUser(repo.Owner).TeamsWithAccessToRepo(ctx, repo.ID, perm.AccessModeRead)
-	if err != nil {
-		log.Error("Repo.Owner.TeamsWithAccessToRepo: %v", err)
-	}
-
-	pushWhitelistTeams := getWhitelistEntities(teamReaders, bp.WhitelistTeamIDs)
-	mergeWhitelistTeams := getWhitelistEntities(teamReaders, bp.MergeWhitelistTeamIDs)
-	approvalsWhitelistTeams := getWhitelistEntities(teamReaders, bp.ApprovalsWhitelistTeamIDs)
+	pushWhitelistTeams := getTeamWhitelistNames(ctx, bp.WhitelistTeamIDs)
+	mergeWhitelistTeams := getTeamWhitelistNames(ctx, bp.MergeWhitelistTeamIDs)
+	approvalsWhitelistTeams := getTeamWhitelistNames(ctx, bp.ApprovalsWhitelistTeamIDs)
 
 	branchName := ""
 	if !git_model.IsRuleNameSpecial(bp.RuleName) {
@@ -456,12 +468,7 @@ func ToTagProtection(ctx context.Context, pt *git_model.ProtectedTag, repo *repo
 
 	whitelistUsernames := getWhitelistEntities(readers, pt.AllowlistUserIDs)
 
-	teamReaders, err := organization.OrgFromUser(repo.Owner).TeamsWithAccessToRepo(ctx, repo.ID, perm.AccessModeRead)
-	if err != nil {
-		log.Error("Repo.Owner.TeamsWithAccessToRepo: %v", err)
-	}
-
-	whitelistTeams := getWhitelistEntities(teamReaders, pt.AllowlistTeamIDs)
+	whitelistTeams := getTeamWhitelistNames(ctx, pt.AllowlistTeamIDs)
 
 	return &api.TagProtection{
 		ID:                 pt.ID,

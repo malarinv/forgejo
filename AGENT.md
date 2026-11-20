@@ -7,7 +7,7 @@ This repository is a **fork** of forgejo/forgejo kept in sync by forklift. Every
 ## Fork Identity & Remotes
 - **Fork remote/branch**: `github/v17`
 - **Upstream remote/branch**: `origin/v17.0/forgejo`
-- **Expected fork commits**: `12`
+- **Expected fork commits**: `13`
 
 ## Fork-Owned Features
 These are the paths this fork owns; prefer ours when they conflict with upstream, and register any new fork-owned path in `.forklift/registry.yaml` before relying on it.
@@ -17,6 +17,7 @@ These are the paths this fork owns; prefer ours when they conflict with upstream
 | admin-auth-sources-api | REST API for listing/reading/PATCHing OAuth2 auth sources (group_team_map, admin_group, group_claim_name, group_team_map_removal, quota maps). Consumed by Backstage repo-reconciler forgejoTeams.ts. | `modules/structs/auth_source.go`<br>`routers/api/v1/admin/auth_source.go`<br>`routers/api/v1/api.go`<br>`services/convert/auth_source.go`<br>`tests/integration/api_admin_auth_source_test.go` |
 | package-cleanup-rules-api | REST CRUD for package cleanup rules at /api/v1/packages/{owner}/rules. Consumed by Backstage repo-reconciler ensurePackageCleanupRules. | `modules/structs/package_cleanup.go`<br>`routers/api/v1/api.go`<br>`routers/api/v1/packages/cleanup_rule.go`<br>`services/convert/package.go` |
 | webhook-package-event-header | case HookEventPackage in HookEventType.Event() so X-Gitea-Event is 'package' for package webhooks; without it the Flux receiver cannot match package pushes. | `modules/webhook/type.go` |
+| cross-org-team-whitelist | Support cross-organization team resolution (<org>/<team> and fallback) in branch and tag protection whitelists, plus faithful team reporting in API converters. | `models/organization/team.go`<br>`models/organization/team_test.go`<br>`routers/api/v1/repo/branch.go`<br>`routers/api/v1/repo/tag.go`<br>`services/convert/convert.go` |
 | fork-build | Container build: Dockerfile.custom (v17 upstream rootless Dockerfile + RELEASE_VERSION default + FORGEJO_VERSION make arg) and GHA workflow building linux/arm64 to ghcr.io/malarinv/forgejo. | `Dockerfile.custom`<br>`.github/workflows/build.yaml`<br>`mise.toml` |
 
 ## Verification Commands

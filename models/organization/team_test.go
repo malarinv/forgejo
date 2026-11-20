@@ -124,6 +124,50 @@ func TestGetTeamByID(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestGetTeamIDsByNames_CrossOrg(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	// 1. Same org direct lookup
+	ids, err := organization.GetTeamIDsByNames(db.DefaultContext, 3, []string{"team1"}, false)
+	require.NoError(t, err)
+	assert.Equal(t, []int64{2}, ids)
+
+	// 2. Cross-org with explicit <org>/<team> syntax
+	ids, err = organization.GetTeamIDsByNames(db.DefaultContext, 6, []string{"org3/team1"}, false)
+	require.NoError(t, err)
+	assert.Equal(t, []int64{2}, ids)
+
+	// 3. Cross-org with fallback (team1 is not in org 6, but resolved globally)
+	ids, err = organization.GetTeamIDsByNames(db.DefaultContext, 6, []string{"team1"}, false)
+	require.NoError(t, err)
+	assert.Equal(t, []int64{2}, ids)
+
+	// 4. Non-existent team should fail when ignoreNonExistent is false
+	_, err = organization.GetTeamIDsByNames(db.DefaultContext, 3, []string{"nonexistent-team"}, false)
+	require.Error(t, err)
+	assert.True(t, organization.IsErrTeamNotExist(err))
+
+	// 5. Non-existent team ignored when ignoreNonExistent is true
+	ids, err = organization.GetTeamIDsByNames(db.DefaultContext, 3, []string{"nonexistent-team"}, true)
+	require.NoError(t, err)
+	assert.Empty(t, ids)
+}
+
+func TestGetTeamsByIDs(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	teams, err := organization.GetTeamsByIDs(db.DefaultContext, []int64{1, 2})
+	require.NoError(t, err)
+	require.Len(t, teams, 2)
+	assert.Equal(t, int64(1), teams[0].ID)
+	assert.Equal(t, int64(2), teams[1].ID)
+
+	// Empty slice returns nil
+	teams, err = organization.GetTeamsByIDs(db.DefaultContext, nil)
+	require.NoError(t, err)
+	assert.Nil(t, teams)
+}
+
 func TestIsTeamMember(t *testing.T) {
 	require.NoError(t, unittest.PrepareTestDatabase())
 	test := func(orgID, teamID, userID int64, expected bool) {
